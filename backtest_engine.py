@@ -3,16 +3,23 @@ import numpy as np
 import pandas as pd
 
 def fetch_historical_data(ticker, start_date, end_date):
-    """Ingests real historical market data using yfinance."""
+    """Ingests real historical market data using yfinance with safety fallbacks."""
     try:
-        data = yf.download(ticker, start=start_date, end=end_date)
+        # Added progress=False to keep the cloud terminal clean
+        data = yf.download(ticker, start=start_date, end=end_date, progress=False)
+        
+        # If yfinance returns an empty frame, try a secondary direct ticker fetch method
+        if data.empty:
+            t = yf.Ticker(ticker)
+            data = t.history(start=start_date, end=end_date)
+            
         if isinstance(data.columns, pd.MultiIndex):
             data.columns = data.columns.get_level_values(0)
+            
         return data
     except Exception as e:
         print(f"Error fetching data: {e}")
         return pd.DataFrame()
-
 def generate_signals(data, fast_window=20, slow_window=50):
     """Calculates moving averages and maps algorithmic buy/sell triggers."""
     if data.empty:
